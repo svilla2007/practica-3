@@ -1,0 +1,101 @@
+#include <iostream>
+#include <fstream>
+#include <bitset>
+#include <string>
+
+using namespace std;
+
+// Convierte un caracter a su representación en binario (8 bits)
+string charToBin(char c) {
+    return bitset<8>(c).to_string();
+}
+
+// Convierte una cadena binaria de vuelta a un caracter
+char binToChar(string bin) {
+    return bitset<8>(bin).to_ulong();
+}
+
+// Método 1 de codificación (inversión de bits)
+void metodo1(string& binario, int n) {
+    // Primer bloque: invierte todos los bits
+    for (int i = 0; i < n; ++i) {
+        binario[i] = (binario[i] == '0') ? '1' : '0';
+    }
+
+    // Codificación de los siguientes bloques
+    for (int i = n; i < binario.size(); i += n) {
+        int ones = count(binario.begin() + i - n, binario.begin() + i, '1');
+        int zeros = n - ones;
+        if (ones == zeros) {
+            for (int j = 0; j < n && i + j < binario.size(); ++j) {
+                binario[i + j] = (binario[i + j] == '0') ? '1' : '0';
+            }
+        } else if (zeros > ones) {
+            for (int j = 0; j < n && i + j < binario.size(); j += 2) {
+                binario[i + j] = (binario[i + j] == '0') ? '1' : '0';
+            }
+        } else {
+            for (int j = 0; j < n && i + j < binario.size(); j += 3) {
+                binario[i + j] = (binario[i + j] == '0') ? '1' : '0';
+            }
+        }
+    }
+}
+
+// Método 2 de codificación (desplazamiento de bits)
+void metodo2(string& binario, int n) {
+    for (int i = 0; i < binario.size(); i += n) {
+        string bloque = binario.substr(i, n);
+        for (int j = 0; j < bloque.size(); ++j) {
+            binario[i + ((j + 1) % bloque.size())] = bloque[j];
+        }
+    }
+}
+
+int main() {
+    int n, metodo;
+    string archivo_entrada, archivo_salida;
+
+    cout << "Ingresa el número n para los bloques de bits: ";
+    cin >> n;
+    cout << "Selecciona el método de codificación (1 o 2): ";
+    cin >> metodo;
+    cout << "Ingresa el nombre del archivo de entrada: ";
+    cin >> archivo_entrada;
+    cout << "Ingresa el nombre del archivo de salida: ";
+    cin >> archivo_salida;
+
+    ifstream archivo(archivo_entrada, ios::binary);
+    ofstream salida(archivo_salida, ios::binary);
+
+    if (archivo.is_open() && salida.is_open()) {
+        string binario = "";
+        char c;
+
+        // Leer el archivo y convertir cada caracter a binario
+        while (archivo.get(c)) {
+            binario += charToBin(c);
+        }
+
+        // Aplicar el método de codificación seleccionado
+        if (metodo == 1) {
+            metodo1(binario, n);
+        } else if (metodo == 2) {
+            metodo2(binario, n);
+        }
+
+        // Escribir el binario codificado en el archivo de salida
+        for (int i = 0; i < binario.size(); i += 8) {
+            string byte = binario.substr(i, 8);
+            salida.put(binToChar(byte));
+        }
+
+        archivo.close();
+        salida.close();
+        cout << "Codificación completada." << endl;
+    } else {
+        cout << "Error al abrir los archivos." << endl;
+    }
+
+    return 0;
+}
