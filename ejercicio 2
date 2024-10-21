@@ -1,0 +1,135 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+
+using namespace std;
+
+// Función de encriptación/desencriptación simple (XOR con una clave fija)
+string encriptar(string texto) {
+    char clave = 'X';  // Clave fija simple para encriptar y desencriptar
+    for (char &c : texto) {
+        c ^= clave;
+    }
+    return texto;
+}
+
+// Función para validar el acceso de administrador
+bool validar_admin(string clave_ingresada) {
+    ifstream archivo("sudo.txt");
+    if (!archivo.is_open()) return false;
+
+    string clave_encriptada;
+    getline(archivo, clave_encriptada);
+    archivo.close();
+
+    string clave_desencriptada = encriptar(clave_encriptada);
+    return clave_ingresada == clave_desencriptada;
+}
+
+// Función para registrar un nuevo usuario
+void registrar_usuario() {
+    string cedula, clave;
+    double saldo;
+
+    cout << "Ingresa la cédula del usuario: ";
+    cin >> cedula;
+    cout << "Ingresa la clave del usuario: ";
+    cin >> clave;
+    cout << "Ingresa el saldo inicial (COP): ";
+    cin >> saldo;
+
+    // Encriptar la clave
+    clave = encriptar(clave);
+
+    // Guardar los datos en el archivo usuarios.txt
+    ofstream archivo("usuarios.txt", ios::app);
+    archivo << cedula << "," << clave << "," << saldo << endl;
+    archivo.close();
+
+    cout << "Usuario registrado exitosamente." << endl;
+}
+
+// Función para consultar saldo o retirar dinero
+void operar_usuario() {
+    string cedula, clave;
+    cout << "Ingresa tu cédula: ";
+    cin >> cedula;
+    cout << "Ingresa tu clave: ";
+    cin >> clave;
+
+    ifstream archivo("usuarios.txt");
+    ofstream temp("temp.txt");
+    bool encontrado = false;
+    string linea;
+
+    while (getline(archivo, linea)) {
+        size_t pos1 = linea.find(',');
+        size_t pos2 = linea.find(',', pos1 + 1);
+
+        string cedula_archivo = linea.substr(0, pos1);
+        string clave_archivo = linea.substr(pos1 + 1, pos2 - pos1 - 1);
+        double saldo = stod(linea.substr(pos2 + 1));
+
+        // Desencriptar la clave
+        clave_archivo = encriptar(clave_archivo);
+
+        if (cedula_archivo == cedula && clave_archivo == clave) {
+            encontrado = true;
+
+            int opcion;
+            cout << "Selecciona una operación:\n1. Consultar saldo\n2. Retirar dinero\n";
+            cin >> opcion;
+
+            if (opcion == 1) {
+                cout << "Saldo disponible: " << saldo << " COP\n";
+            } else if (opcion == 2) {
+                double monto;
+                cout << "Ingresa el monto a retirar: ";
+                cin >> monto;
+                if (monto + 1000 <= saldo) {
+                    saldo -= monto + 1000;  // Restar monto y costo de transacción
+                    cout << "Retiro exitoso. Tu saldo ahora es: " << saldo << " COP\n";
+                } else {
+                    cout << "Saldo insuficiente.\n";
+                }
+            }
+        }
+
+        // Guardar los datos (modificados o no) en el archivo temporal
+        temp << cedula_archivo << "," << encriptar(clave_archivo) << "," << saldo << endl;
+    }
+
+    archivo.close();
+    temp.close();
+
+    // Reemplazar el archivo original con el archivo temporal
+    remove("usuarios.txt");
+    rename("temp.txt", "usuarios.txt");
+
+    if (!encontrado) {
+        cout << "Cédula o clave incorrecta." << endl;
+    }
+}
+
+int main() {
+    int opcion;
+    cout << "Selecciona el modo de acceso:\n1. Administrador\n2. Usuario\n";
+    cin >> opcion;
+
+    if (opcion == 1) {
+        string clave_admin;
+        cout << "Ingresa la clave de administrador: ";
+        cin >> clave_admin;
+
+        if (validar_admin(clave_admin)) {
+            cout << "Acceso concedido.\n";
+            registrar_usuario();
+        } else {
+            cout << "Acceso denegado.\n";
+        }
+    } else if (opcion == 2) {
+        operar_usuario();
+    }
+
+    return 0;
+}
